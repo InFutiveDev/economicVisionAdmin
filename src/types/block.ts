@@ -119,6 +119,7 @@ export type PagePayload = {
   kicker: string
   excerpt: string
   category: string
+  subCategory: string
   tags: string[]
   coverImage: string
   featured: boolean

@@ -1,14 +1,20 @@
-import { useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
-import { ArrowLeft, Eye, Globe, Save } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { fetchCategoriesApi } from '../api/homepage.api'
+import { groupCategories } from '../types/homepage'
+import { Link, useParams } from 'react-router-dom'
+import { ArrowLeft, Eye, Globe, Pencil, Save } from 'lucide-react'
 import { BlockEditor } from '../components/blocks/BlockEditor'
 import { BlockPalette } from '../components/blocks/BlockPalette'
 import { BlockRenderer } from '../components/blocks/BlockRenderer'
+import { ImageUploadField } from '../components/blocks/ImageUploadField'
+import { TagInput } from '../components/articles/TagInput'
 import { useAppDispatch, useAppSelector } from '../redux/hooks'
+import { fetchArticles, selectArticles } from '../redux/slices/articlesSlice'
 import { selectUser } from '../redux/slices/authSlice'
 import {
   addBlock,
   duplicateBlock,
+  loadArticle,
   moveBlock,
   publishArticle,
   removeBlock,
@@ -22,6 +28,7 @@ import {
   setExcerpt,
   setFeatured,
   setKicker,
+  setSubCategory,
   setTags,
   setTitle,
   togglePreview,
@@ -31,7 +38,31 @@ import { ARTICLE_CATEGORIES } from '../types/block'
 import { initials, slugify } from '../utils/slug'
 import '../styles/article-editor.css'
 
-export function AddArticlePage() {
+const TITLE_FIELD_ID = 'article-title'
+const BLOCKS_FIELD_ID = 'article-blocks'
+
+function focusEditorField(field: 'title' | 'blocks') {
+  const id = field === 'title' ? TITLE_FIELD_ID : BLOCKS_FIELD_ID
+  window.requestAnimationFrame(() => {
+    const element = document.getElementById(id)
+    element?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    if (
+      element instanceof HTMLInputElement ||
+      element instanceof HTMLTextAreaElement
+    ) {
+      element.focus()
+    }
+  })
+}
+
+function fieldFromError(message: string): 'title' | 'blocks' | null {
+  if (/title/i.test(message)) return 'title'
+  if (/block/i.test(message)) return 'blocks'
+  return null
+}
+
+export function AddArticlePage({ previewOnly = false }: { previewOnly?: boolean }) {
+  const { articleId } = useParams()
   const dispatch = useAppDispatch()
   const user = useAppSelector(selectUser)
   const editor = useAppSelector(selectEditor)
@@ -41,41 +72,99 @@ export function AddArticlePage() {
     .split(',')
     .map((tag) => tag.trim())
     .filter(Boolean)
+  const articles = useAppSelector(selectArticles)
+  const tagSuggestions = useMemo(
+    () =>
+      [...new Set(articles.flatMap((article) => article.tags.map((tag) => tag.trim())))]
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b)),
+    [articles],
+  )
 
   useEffect(() => {
-    dispatch(resetEditor())
-    if (user?.name) dispatch(setAuthor(user.name))
+    if (!previewOnly && articles.length === 0) void dispatch(fetchArticles())
+  }, [dispatch, previewOnly, articles.length])
+  const [categoryGroups, setCategoryGroups] = useState<{ name: string; children: string[] }[]>(
+    ARTICLE_CATEGORIES.map((name) => ({ name, children: [] })),
+  )
+  const activeGroup = categoryGroups.find((group) => group.name === editor.category)
+  const subCategoryOptions = activeGroup?.children ?? []
+  const showSubCategoryValue =
+    Boolean(editor.subCategory) && !subCategoryOptions.includes(editor.subCategory)
+
+  useEffect(() => {
+    fetchCategoriesApi()
+      .then((categories) => {
+        if (!categories.length) return
+        setCategoryGroups(
+          groupCategories(categories).map((group) => ({
+            name: group.name,
+            children: group.children.map((child) => child.name),
+          })),
+        )
+      })
+      .catch(() => undefined)
+  }, [])
+
+  useEffect(() => {
+    if (articleId) {
+      void dispatch(loadArticle({ id: articleId, preview: previewOnly }))
+    } else {
+      dispatch(resetEditor())
+      if (user?.name) dispatch(setAuthor(user.name))
+    }
     return () => {
       dispatch(resetEditor())
     }
-  }, [dispatch, user?.name])
+  }, [articleId, dispatch, previewOnly, user?.name])
 
   const validate = () => {
     if (!editor.title.trim() && editor.blocks.length === 0) {
-      return 'Title is required, and the article needs at least one block.'
+      return {
+        message: 'Title is required, and the article needs at least one block.',
+        field: 'title' as const,
+      }
     }
-    if (!editor.title.trim()) return 'Title is required.'
-    if (editor.blocks.length === 0) return 'Add at least one block before saving.'
-    return ''
+    if (!editor.title.trim()) {
+      return { message: 'Title is required.', field: 'title' as const }
+    }
+    if (editor.blocks.length === 0) {
+      return {
+        message: 'Add at least one block before saving.',
+        field: 'blocks' as const,
+      }
+    }
+    return { message: '', field: null }
+  }
+
+  const showValidation = (message: string, field: 'title' | 'blocks' | null) => {
+    if (editor.preview) dispatch(togglePreview())
+    dispatch(setError(message))
+    if (field) focusEditorField(field)
   }
 
   const handleSave = () => {
-    const message = validate()
-    if (message) {
-      dispatch(setError(message))
+    const result = validate()
+    if (result.message) {
+      showValidation(result.message, result.field)
       return
     }
     void dispatch(saveDraft())
   }
 
   const handlePublish = () => {
-    const message = validate()
-    if (message) {
-      dispatch(setError(message))
+    const result = validate()
+    if (result.message) {
+      showValidation(result.message, result.field)
       return
     }
     void dispatch(publishArticle())
   }
+
+  useEffect(() => {
+    const field = fieldFromError(editor.error)
+    if (field) focusEditorField(field)
+  }, [editor.error])
 
   return (
     <div className="article-page">
@@ -87,24 +176,34 @@ export function AddArticlePage() {
           </Link>
           <div className="article-actions">
             <span className={`status-pill ${editor.status}`}>{editor.status}</span>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => dispatch(togglePreview())}
-            >
-              <Eye size={14} />
-              {editor.preview ? 'Edit' : 'Preview'}
-            </button>
-            <button
-              type="button"
-              className="btn gold"
-              onClick={handleSave}
-              disabled={editor.saving}
-            >
-              <Save size={14} />
-              Save draft
-            </button>
-            {isAdmin ? (
+            {previewOnly && editor.pageId ? (
+              <Link className="btn" to={`/articles/${editor.pageId}/edit`}>
+                <Pencil size={14} />
+                Edit
+              </Link>
+            ) : null}
+            {previewOnly ? null : (
+              <button
+                type="button"
+                className="btn"
+                onClick={() => dispatch(togglePreview())}
+              >
+                <Eye size={14} />
+                {editor.preview ? 'Edit' : 'Preview'}
+              </button>
+            )}
+            {previewOnly ? null : (
+              <button
+                type="button"
+                className="btn gold"
+                onClick={handleSave}
+                disabled={editor.saving}
+              >
+                <Save size={14} />
+                {editor.status === 'published' ? 'Save changes' : 'Save draft'}
+              </button>
+            )}
+            {previewOnly || !isAdmin ? null : (
               <button
                 type="button"
                 className="btn primary"
@@ -114,72 +213,142 @@ export function AddArticlePage() {
                 <Globe size={14} />
                 Publish
               </button>
-            ) : null}
+            )}
           </div>
         </div>
 
         <header className="article-header">
-          <input
-            className="article-kicker-input"
-            value={editor.kicker}
-            placeholder="Kicker / eyebrow"
-            onChange={(event) => dispatch(setKicker(event.target.value))}
-          />
-          <input
-            className="article-title-input"
-            value={editor.title}
-            placeholder="Write a headline"
-            onChange={(event) => dispatch(setTitle(event.target.value))}
-          />
-          <p className="article-slug">{slug || 'slug-will-appear-here'}</p>
-          <textarea
-            className="article-excerpt"
-            value={editor.excerpt}
-            placeholder="Dek / excerpt for the homepage and newsletter"
-            onChange={(event) => dispatch(setExcerpt(event.target.value))}
-          />
+          <div className="article-field">
+            <label className="field-label" htmlFor="article-kicker">
+              Kicker
+            </label>
+            <input
+              id="article-kicker"
+              className="article-kicker-input"
+              value={editor.kicker}
+              placeholder="Kicker / eyebrow"
+              onChange={(event) => dispatch(setKicker(event.target.value))}
+            />
+          </div>
+          <div className="article-field article-title-field">
+            <label className="field-label" htmlFor={TITLE_FIELD_ID}>
+              Title
+            </label>
+            <input
+              id={TITLE_FIELD_ID}
+              className={`article-title-input ${
+                /title/i.test(editor.error) ? 'is-invalid' : ''
+              }`}
+              value={editor.title}
+              placeholder="Add a title"
+              aria-invalid={/title/i.test(editor.error)}
+              onChange={(event) => dispatch(setTitle(event.target.value))}
+            />
+            <p className="article-slug">{slug || 'slug-will-appear-here'}</p>
+          </div>
+          <div className="article-field">
+            <label className="field-label" htmlFor="article-excerpt">
+              Excerpt
+            </label>
+            <textarea
+              id="article-excerpt"
+              className="article-excerpt"
+              value={editor.excerpt}
+              placeholder="Dek / excerpt for the homepage and newsletter"
+              onChange={(event) => dispatch(setExcerpt(event.target.value))}
+            />
+          </div>
 
           <div className="article-meta-grid">
-            <label className="cover-field">
-              {editor.coverImage ? (
-                <img className="cover-preview" src={editor.coverImage} alt="" />
-              ) : (
-                <div className="cover-placeholder">Cover image preview</div>
-              )}
+            <div className="article-field cover-field">
+              <label className="field-label" htmlFor="article-cover-upload">
+                Cover image
+              </label>
+              <ImageUploadField
+                id="article-cover-upload"
+                value={editor.coverImage}
+                onChange={(url) => dispatch(setCoverImage(url))}
+              />
               <input
                 className="field"
                 value={editor.coverImage}
-                placeholder="Cover image URL"
+                placeholder="Or paste a cover image URL"
+                aria-label="Cover image URL"
                 onChange={(event) => dispatch(setCoverImage(event.target.value))}
               />
-            </label>
+            </div>
 
             <div className="meta-fields">
               <div className="article-toolbar-meta">
-                <input
-                  className="article-author-input"
-                  value={editor.author}
-                  placeholder="Author"
-                  onChange={(event) => dispatch(setAuthor(event.target.value))}
-                />
-                <select
-                  className="article-select"
-                  value={editor.category}
-                  onChange={(event) => dispatch(setCategory(event.target.value))}
-                >
-                  {ARTICLE_CATEGORIES.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
+                <div className="article-field">
+                  <label className="field-label" htmlFor="article-author">
+                    Author
+                  </label>
+                  <input
+                    id="article-author"
+                    className="article-author-input"
+                    value={editor.author}
+                    placeholder="Author"
+                    onChange={(event) => dispatch(setAuthor(event.target.value))}
+                  />
+                </div>
+                <div className="article-field">
+                  <label className="field-label" htmlFor="article-category">
+                    Category
+                  </label>
+                  <select
+                    id="article-category"
+                    className="article-select"
+                    value={editor.category}
+                    onChange={(event) => dispatch(setCategory(event.target.value))}
+                  >
+                    {activeGroup ? null : (
+                      <option value={editor.category}>{editor.category}</option>
+                    )}
+                    {categoryGroups.map((group) => (
+                      <option key={group.name} value={group.name}>
+                        {group.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="article-field">
+                  <label className="field-label" htmlFor="article-sub-category">
+                    Sub-category
+                  </label>
+                  <select
+                    id="article-sub-category"
+                    className="article-select"
+                    value={editor.subCategory}
+                    disabled={!subCategoryOptions.length && !editor.subCategory}
+                    onChange={(event) => dispatch(setSubCategory(event.target.value))}
+                  >
+                    <option value="">
+                      {subCategoryOptions.length ? 'None' : 'No sub-categories'}
                     </option>
-                  ))}
-                </select>
+                    {showSubCategoryValue ? (
+                      <option value={editor.subCategory}>{editor.subCategory}</option>
+                    ) : null}
+                    {subCategoryOptions.map((child) => (
+                      <option key={child} value={child}>
+                        {child}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <input
-                className="article-tags-input"
-                value={editor.tags}
-                placeholder="Tags, comma separated"
-                onChange={(event) => dispatch(setTags(event.target.value))}
-              />
+              <div className="article-field">
+                <label className="field-label" htmlFor="article-tags">
+                  Tags
+                </label>
+                <TagInput
+                  id="article-tags"
+                  value={tags}
+                  suggestions={tagSuggestions}
+                  placeholder="Type a tag and press Enter"
+                  onChange={(next) => dispatch(setTags(next.join(', ')))}
+                />
+              </div>
               <label className="featured-toggle">
                 <input
                   type="checkbox"
@@ -193,13 +362,21 @@ export function AddArticlePage() {
         </header>
 
         {editor.error ? (
-          <div className="error-banner" role="alert">
+          <button
+            type="button"
+            className="error-banner"
+            role="alert"
+            onClick={() => {
+              const field = fieldFromError(editor.error)
+              if (field) focusEditorField(field)
+            }}
+          >
             {editor.error}
-          </div>
+          </button>
         ) : null}
         {editor.notice ? <div className="notice-banner">{editor.notice}</div> : null}
 
-        {editor.preview ? (
+        {previewOnly || editor.preview ? (
           <article className="article-preview">
             {editor.kicker ? (
               <p className="article-preview-kicker">{editor.kicker}</p>
@@ -214,7 +391,8 @@ export function AddArticlePage() {
             <div className="article-byline">
               <span className="avatar">{initials(editor.author)}</span>
               <span>
-                {editor.author || 'Editorial Desk'} · {editor.category} ·{' '}
+                {editor.author || 'Editorial Desk'} ·{' '}
+                {[editor.category, editor.subCategory].filter(Boolean).join(' › ')} ·{' '}
                 {new Date().toLocaleDateString(undefined, {
                   month: 'short',
                   day: 'numeric',
@@ -242,7 +420,7 @@ export function AddArticlePage() {
         ) : (
           <>
             {editor.blocks.length === 0 ? (
-              <div className="empty-editor">
+              <div className="empty-editor" id={BLOCKS_FIELD_ID}>
                 <h3>Start the story</h3>
                 <p>Add a heading, stats, image, or any block from the palette below.</p>
               </div>
@@ -263,7 +441,9 @@ export function AddArticlePage() {
                 ))}
               </div>
             )}
-            <BlockPalette onAdd={(type) => dispatch(addBlock(type))} />
+            <div id={editor.blocks.length === 0 ? undefined : BLOCKS_FIELD_ID}>
+              <BlockPalette onAdd={(type) => dispatch(addBlock(type))} />
+            </div>
           </>
         )}
       </div>

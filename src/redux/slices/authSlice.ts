@@ -4,7 +4,9 @@ import type { AuthUser, LoginInput } from '../../types/auth'
 import { getErrorMessage } from '../../utils/error'
 import { clearSession, readSession, writeSession } from '../../utils/storage'
 
-const session = readSession()
+const stored = readSession()
+const session = stored?.token?.startsWith('demo-') ? null : stored
+if (stored && !session) clearSession()
 
 type AuthState = {
   user: AuthUser | null

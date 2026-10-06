@@ -1,5 +1,8 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
+import { fetchArticleByIdApi } from '../../api/articles.api'
 import { publishPageApi, savePageApi } from '../../api/pages.api'
+import { uploadInlineImages } from '../../api/upload.api'
+import type { Article } from '../../types/article'
 import type { Block, BlockType, PagePayload } from '../../types/block'
 import { createBlock } from '../../utils/blockFactory'
 import { getErrorMessage } from '../../utils/error'
@@ -10,6 +13,7 @@ type EditorState = {
   kicker: string
   excerpt: string
   category: string
+  subCategory: string
   tags: string
   coverImage: string
   featured: boolean
@@ -28,6 +32,7 @@ const initialState: EditorState = {
   kicker: '',
   excerpt: '',
   category: 'Economy',
+  subCategory: '',
   tags: '',
   coverImage: '',
   featured: false,
@@ -40,13 +45,17 @@ const initialState: EditorState = {
   saving: false,
 }
 
-function toPayload(state: EditorState): PagePayload {
+function toPayload(
+  state: EditorState,
+  status: PagePayload['status'] = 'draft',
+): PagePayload {
   return {
     title: state.title.trim(),
     slug: slugify(state.title),
     kicker: state.kicker.trim(),
     excerpt: state.excerpt.trim(),
     category: state.category,
+    subCategory: state.subCategory,
     tags: state.tags
       .split(',')
       .map((tag) => tag.trim())
@@ -54,7 +63,7 @@ function toPayload(state: EditorState): PagePayload {
     coverImage: state.coverImage.trim(),
     featured: state.featured,
     author: state.author.trim() || 'Editorial Desk',
-    status: 'draft',
+    status,
     blocks: state.blocks,
   }
 }
@@ -64,9 +73,27 @@ export const saveDraft = createAsyncThunk(
   async (_, { getState, rejectWithValue }) => {
     const { editor } = getState() as { editor: EditorState }
     try {
-      return await savePageApi(toPayload(editor), editor.pageId)
+      const status = editor.status === 'published' ? 'published' : 'draft'
+      const payload = await uploadInlineImages(toPayload(editor, status))
+      const saved = await savePageApi(payload, editor.pageId)
+      return { ...saved, blocks: payload.blocks, coverImage: payload.coverImage }
     } catch (error) {
       return rejectWithValue(getErrorMessage(error, 'Could not save draft.'))
+    }
+  },
+)
+
+export const loadArticle = createAsyncThunk(
+  'editor/load',
+  async (
+    { id, preview = false }: { id: string; preview?: boolean },
+    { rejectWithValue },
+  ) => {
+    try {
+      const article = await fetchArticleByIdApi(id)
+      return { article, preview }
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error, 'Could not load this article.'))
     }
   },
 )
@@ -76,13 +103,14 @@ export const publishArticle = createAsyncThunk(
   async (_, { getState, rejectWithValue }) => {
     const { editor } = getState() as { editor: EditorState }
     try {
-      const saved = await savePageApi(toPayload(editor), editor.pageId)
+      const payload = await uploadInlineImages(toPayload(editor, 'published'))
+      const saved = await savePageApi(payload, editor.pageId)
       const id = saved.id ?? editor.pageId
       if (!id) {
         throw new Error('Save succeeded without an id, so publish was skipped.')
       }
-      await publishPageApi(id)
-      return saved
+      const published = await publishPageApi(id, payload)
+      return { ...published, blocks: payload.blocks, coverImage: payload.coverImage }
     } catch (error) {
       return rejectWithValue(getErrorMessage(error, 'Could not publish this article.'))
     }
@@ -94,6 +122,25 @@ const editorSlice = createSlice({
   initialState,
   reducers: {
     resetEditor: () => initialState,
+    hydrateEditor(state, action: PayloadAction<Article>) {
+      const article = action.payload
+      state.pageId = article.id
+      state.title = article.title
+      state.kicker = article.kicker
+      state.excerpt = article.excerpt
+      state.category = article.category || 'Economy'
+      state.subCategory = article.subCategory || ''
+      state.tags = article.tags.join(', ')
+      state.coverImage = article.coverImage
+      state.featured = article.featured
+      state.author = article.author
+      state.blocks = article.blocks
+      state.status = article.status === 'published' ? 'published' : 'draft'
+      state.preview = false
+      state.error = ''
+      state.notice = ''
+      state.saving = false
+    },
     setTitle(state, action: PayloadAction<string>) {
       state.title = action.payload
       state.error = ''
@@ -106,7 +153,11 @@ const editorSlice = createSlice({
       state.excerpt = action.payload
     },
     setCategory(state, action: PayloadAction<string>) {
+      if (state.category !== action.payload) state.subCategory = ''
       state.category = action.payload
+    },
+    setSubCategory(state, action: PayloadAction<string>) {
+      state.subCategory = action.payload
     },
     setTags(state, action: PayloadAction<string>) {
       state.tags = action.payload
@@ -167,9 +218,12 @@ const editorSlice = createSlice({
       })
       .addCase(saveDraft.fulfilled, (state, action) => {
         state.saving = false
-        state.status = 'draft'
-        state.notice = 'Draft saved.'
+        state.status = action.payload.status === 'published' ? 'published' : 'draft'
+        state.notice =
+          state.status === 'published' ? 'Changes saved.' : 'Draft saved.'
         if (action.payload.id) state.pageId = action.payload.id
+        state.blocks = action.payload.blocks
+        state.coverImage = action.payload.coverImage
       })
       .addCase(saveDraft.rejected, (state, action) => {
         state.saving = false
@@ -184,20 +238,40 @@ const editorSlice = createSlice({
         state.status = 'published'
         state.notice = 'Article published.'
         if (action.payload.id) state.pageId = action.payload.id
+        state.blocks = action.payload.blocks
+        state.coverImage = action.payload.coverImage
       })
       .addCase(publishArticle.rejected, (state, action) => {
         state.saving = false
         state.error = (action.payload as string) || 'Could not publish this article.'
+      })
+      .addCase(loadArticle.pending, (state) => {
+        state.saving = true
+        state.error = ''
+        state.notice = ''
+      })
+      .addCase(loadArticle.fulfilled, (state, action) => {
+        editorSlice.caseReducers.hydrateEditor(state, {
+          ...action,
+          payload: action.payload.article,
+        })
+        state.preview = action.payload.preview
+      })
+      .addCase(loadArticle.rejected, (state, action) => {
+        state.saving = false
+        state.error = (action.payload as string) || 'Could not load this article.'
       })
   },
 })
 
 export const {
   resetEditor,
+  hydrateEditor,
   setTitle,
   setKicker,
   setExcerpt,
   setCategory,
+  setSubCategory,
   setTags,
   setCoverImage,
   setFeatured,

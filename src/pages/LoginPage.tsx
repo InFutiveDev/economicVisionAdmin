@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Newspaper } from 'lucide-react'
-import { demoCredentials } from '../api/auth.api'
 import { useAppDispatch, useAppSelector } from '../redux/hooks'
 import { loginUser, selectAuthStatus } from '../redux/slices/authSlice'
 import type { LoginInput } from '../types/auth'
@@ -65,7 +64,7 @@ export function LoginPage() {
                 type="email"
                 autoComplete="username"
                 className="h-11 w-full rounded-md border border-white/10 bg-navy-deep px-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-gold"
-                placeholder={demoCredentials.email}
+                placeholder="you@economicvision.com"
                 {...register('email', { required: 'Email is required' })}
               />
               {errors.email ? (
@@ -119,10 +118,6 @@ export function LoginPage() {
               {submitting ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
-
-          <p className="mt-4 font-mono text-[11px] leading-relaxed text-white/45">
-            Demo {demoCredentials.email} / {demoCredentials.password}
-          </p>
         </section>
       </div>
     </div>

@@ -1,10 +1,14 @@
 import {
   FileText,
+  Home,
   LayoutDashboard,
+  PlaySquare,
+  Tags,
   LogOut,
   Newspaper,
   Plus,
   Search,
+  Users,
 } from 'lucide-react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '../../redux/hooks'
@@ -15,12 +19,22 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/articles', label: 'Articles', icon: FileText, end: true },
   { to: '/articles/new', label: 'New article', icon: Plus, end: true },
+  { to: '/homepage', label: 'Homepage', icon: Home, end: true, adminOnly: true },
+  { to: '/categories', label: 'Categories', icon: Tags, end: true, adminOnly: true },
+  { to: '/media', label: 'Videos & media', icon: PlaySquare, end: true, adminOnly: true },
+  { to: '/users', label: 'Users', icon: Users, end: true, adminOnly: true },
 ]
 
 function pageTitle(pathname: string) {
   if (pathname === '/') return 'Dashboard'
   if (pathname.startsWith('/articles/new')) return 'New article'
+  if (pathname.includes('/edit')) return 'Edit article'
+  if (pathname.includes('/preview')) return 'Preview article'
   if (pathname.startsWith('/articles')) return 'Articles'
+  if (pathname.startsWith('/users')) return 'Users'
+  if (pathname.startsWith('/categories')) return 'Categories'
+  if (pathname.startsWith('/homepage')) return 'Homepage'
+  if (pathname.startsWith('/media')) return 'Videos, podcasts & stories'
   return 'News Article Admin'
 }
 
@@ -54,7 +68,9 @@ export function Layout() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-4">
-          {navItems.map(({ to, label, icon: Icon, end }) => (
+          {navItems
+            .filter((item) => !item.adminOnly || user?.role === 'admin')
+            .map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -82,7 +98,7 @@ export function Layout() {
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{user?.name}</p>
                 <p className="text-[11px] tracking-wide text-gold uppercase">
-                  {user?.role}
+                  {user?.role === 'admin' ? 'admin' : 'author'}
                 </p>
               </div>
             </div>
@@ -108,25 +124,39 @@ export function Layout() {
           </div>
 
           <div className="flex items-center gap-3">
-            <label className="relative hidden md:block">
-              <Search
-                size={16}
-                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted"
-              />
-              <input
-                type="search"
-                placeholder="Search articles"
-                className="h-10 w-64 rounded-md border border-line bg-paper pr-3 pl-9 text-sm outline-none focus:border-gold"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() => navigate('/articles/new')}
-              className="inline-flex h-10 items-center gap-2 rounded-md bg-ink px-4 text-sm font-medium text-white hover:bg-navy"
-            >
-              <Plus size={16} />
-              New article
-            </button>
+            {location.pathname.startsWith('/articles') ? null : (
+              <form
+                role="search"
+                className="relative hidden md:block"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  const query = new FormData(event.currentTarget).get('q')?.toString().trim()
+                  navigate(query ? `/articles?q=${encodeURIComponent(query)}` : '/articles')
+                }}
+              >
+                <Search
+                  size={16}
+                  className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted"
+                />
+                <input
+                  name="q"
+                  type="search"
+                  aria-label="Search articles"
+                  placeholder="Search articles"
+                  className="h-10 w-64 rounded-md border border-line bg-paper pr-3 pl-9 text-sm outline-none focus:border-gold"
+                />
+              </form>
+            )}
+            {location.pathname === '/articles/new' ? null : (
+              <button
+                type="button"
+                onClick={() => navigate('/articles/new')}
+                className="inline-flex h-10 items-center gap-2 rounded-md bg-ink px-4 text-sm font-medium text-white hover:bg-navy"
+              >
+                <Plus size={16} />
+                New article
+              </button>
+            )}
             <button
               type="button"
               onClick={signOut}

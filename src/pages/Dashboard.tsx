@@ -2,13 +2,13 @@ import { useEffect } from 'react'
 import { format, formatDistanceToNow } from 'date-fns'
 import {
   Clock3,
-  Eye,
   FilePenLine,
   FileText,
   Newspaper,
   TrendingUp,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { ArticleListActions } from '../components/articles/ArticleListActions'
 import { useAppDispatch, useAppSelector } from '../redux/hooks'
 import { fetchArticles, selectArticles } from '../redux/slices/articlesSlice'
 import { selectUser } from '../redux/slices/authSlice'
@@ -46,14 +46,6 @@ export function Dashboard() {
       hint: 'Waiting on desk',
       icon: FilePenLine,
     },
-    {
-      label: 'Page views',
-      value: articles
-        .reduce((sum, article) => sum + article.views, 0)
-        .toLocaleString(),
-      hint: 'Last 7 days',
-      icon: Eye,
-    },
   ]
 
   return (
@@ -85,7 +77,7 @@ export function Dashboard() {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-3">
         {stats.map(({ label, value, hint, icon: Icon }) => (
           <article
             key={label}
@@ -122,6 +114,7 @@ export function Dashboard() {
                   <th className="px-5 py-3 font-medium">Category</th>
                   <th className="px-5 py-3 font-medium">Status</th>
                   <th className="px-5 py-3 font-medium">Updated</th>
+                  <th className="px-5 py-3 font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -144,6 +137,9 @@ export function Dashboard() {
                         addSuffix: true,
                       })}
                     </td>
+                    <td className="px-5 py-4">
+                      <ArticleListActions article={article} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -164,6 +160,9 @@ export function Dashboard() {
                   {article.category} · {article.author} ·{' '}
                   {format(new Date(article.updatedAt), 'MMM d, h:mm a')}
                 </p>
+                <div className="mt-2">
+                  <ArticleListActions article={article} />
+                </div>
               </li>
             ))}
           </ul>

@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
-import { fetchArticlesApi, mockArticles } from '../../api/articles.api'
+import { fetchArticlesApi } from '../../api/articles.api'
 import type { Article } from '../../types/article'
 import { getErrorMessage } from '../../utils/error'
 
@@ -10,7 +10,7 @@ type ArticlesState = {
 }
 
 const initialState: ArticlesState = {
-  items: mockArticles,
+  items: [],
   status: 'idle',
   error: null,
 }
@@ -49,4 +49,8 @@ const articlesSlice = createSlice({
 
 export const selectArticles = (state: { articles: ArticlesState }) =>
   state.articles.items
+export const selectArticlesStatus = (state: { articles: ArticlesState }) =>
+  state.articles.status
+export const selectArticlesError = (state: { articles: ArticlesState }) =>
+  state.articles.error
 export default articlesSlice.reducer
