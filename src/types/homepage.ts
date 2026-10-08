@@ -33,6 +33,8 @@ export type HomeSectionKey =
   | 'hero'
   | 'top-stories'
   | 'latest-news'
+  | 'editors-pick'
+  | 'trending'
   | 'exclusive'
   | 'why-it-matters'
   | 'opinion'
@@ -84,6 +86,20 @@ export const HOME_SECTIONS: HomeSectionConfig[] = [
     title: 'Latest News',
     description: 'Position 1 is the featured story; the rest are timed updates.',
     limit: 6,
+  },
+  {
+    key: 'editors-pick',
+    title: "Editor's Pick",
+    description: 'Handpicked featured stories curated by the editorial desk.',
+    limit: 6,
+    labelField: { label: 'Badge', placeholder: 'e.g. Must Read, Editor Pick' },
+  },
+  {
+    key: 'trending',
+    title: 'Trending',
+    description: 'Top trending stories based on reader engagement.',
+    limit: 6,
+    labelField: { label: 'Badge', placeholder: 'e.g. Trending, Popular' },
   },
   {
     key: 'exclusive',
