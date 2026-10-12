@@ -19,6 +19,8 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/articles', label: 'Articles', icon: FileText, end: true },
   { to: '/articles/new', label: 'New article', icon: Plus, end: true },
+  { to: '/epaper', label: 'E-Paper', icon: Newspaper, end: true },
+  { to: '/epaper/new', label: 'New E-Paper', icon: Plus, end: true },
   { to: '/homepage', label: 'Homepage', icon: Home, end: true, adminOnly: true },
   { to: '/categories', label: 'Categories', icon: Tags, end: true, adminOnly: true },
   { to: '/media', label: 'Videos & media', icon: PlaySquare, end: true, adminOnly: true },
@@ -28,6 +30,10 @@ const navItems = [
 function pageTitle(pathname: string) {
   if (pathname === '/') return 'Dashboard'
   if (pathname.startsWith('/articles/new')) return 'New article'
+  if (pathname.startsWith('/epaper/new')) return 'New E-Paper'
+  if (pathname.startsWith('/epaper') && pathname.includes('/edit')) return 'Edit E-Paper'
+  if (pathname.startsWith('/epaper') && pathname.includes('/preview')) return 'Preview E-Paper'
+  if (pathname.startsWith('/epaper')) return 'E-Paper Editions'
   if (pathname.includes('/edit')) return 'Edit article'
   if (pathname.includes('/preview')) return 'Preview article'
   if (pathname.startsWith('/articles')) return 'Articles'

@@ -6,13 +6,15 @@ import {
   RequireAuth,
 } from './components/layout/ProtectedRoute'
 import { AddArticlePage } from './pages/AddArticlePage'
+import { AddEpaperPage } from './pages/AddEpaperPage'
 import { ArticlesPage } from './pages/ArticlesPage'
-import { Dashboard } from './pages/Dashboard'
-import { LoginPage } from './pages/LoginPage'
-import { UsersPage } from './pages/UsersPage'
 import { CategoriesPage } from './pages/CategoriesPage'
+import { Dashboard } from './pages/Dashboard'
+import { EpaperPage } from './pages/EpaperPage'
 import { HomepagePage } from './pages/HomepagePage'
+import { LoginPage } from './pages/LoginPage'
 import { MediaPage } from './pages/MediaPage'
+import { UsersPage } from './pages/UsersPage'
 
 export default function App() {
   return (
@@ -30,6 +32,13 @@ export default function App() {
           <Route
             path="articles/:articleId/preview"
             element={<AddArticlePage previewOnly />}
+          />
+          <Route path="epaper" element={<EpaperPage />} />
+          <Route path="epaper/new" element={<AddEpaperPage />} />
+          <Route path="epaper/:epaperId/edit" element={<AddEpaperPage />} />
+          <Route
+            path="epaper/:epaperId/preview"
+            element={<AddEpaperPage previewOnly />}
           />
           <Route element={<RequireAdmin />}>
             <Route path="users" element={<UsersPage />} />
