@@ -10,7 +10,11 @@ import {
   ZoomOut,
 } from 'lucide-react'
 import { uploadImageApi } from '../../api/upload.api'
-import type { CustomPageDesign, EpaperPageLayoutTemplate } from '../../types/epaper'
+import type {
+  CustomPageDesign,
+  EpaperPageLayoutTemplate,
+  PageDesignStory,
+} from '../../types/epaper'
 import { renderDomToImageFile } from '../../utils/domToCanvas'
 import { ImageUploadField } from '../blocks/ImageUploadField'
 import { EpaperBroadsheetCanvas } from './EpaperBroadsheetCanvas'
@@ -26,6 +30,8 @@ type EpaperDesignModalProps = {
   editionCity: string
   editionDate: string
 }
+
+type TickerItem = NonNullable<CustomPageDesign['topTicker']>['items'][number]
 
 const TEMPLATES: Array<{ id: EpaperPageLayoutTemplate; label: string; icon: string }> = [
   { id: 'front-page', label: 'Front Page / Broadsheet', icon: '📰' },
@@ -129,6 +135,30 @@ export function EpaperDesignModal({
   const [newLeadPara, setNewLeadPara] = useState('')
 
   if (!isOpen) return null
+
+  const updateSideStory = (index: number, patch: Partial<PageDesignStory>) =>
+    setDesign((prev) => ({
+      ...prev,
+      sideStories: prev.sideStories.map((story, i) => (i === index ? { ...story, ...patch } : story)),
+    }))
+
+  const updateBottomStory = (index: number, patch: Partial<PageDesignStory>) =>
+    setDesign((prev) => ({
+      ...prev,
+      bottomStories: prev.bottomStories.map((story, i) =>
+        i === index ? { ...story, ...patch } : story,
+      ),
+    }))
+
+  const updateTicker = (index: number, patch: Partial<TickerItem>) =>
+    setDesign((prev) => ({
+      ...prev,
+      topTicker: {
+        items: (prev.topTicker?.items || []).map((item, i) =>
+          i === index ? { ...item, ...patch } : item,
+        ),
+      },
+    }))
 
   const handleApplyDesign = async () => {
     setRendering(true)
@@ -580,29 +610,40 @@ export function EpaperDesignModal({
                       Sidebar Digest Headlines
                     </h4>
                     {design.sideStories.map((story, sIdx) => (
-                      <div key={sIdx} className="mb-2 p-2 border border-line rounded bg-slate-50 space-y-1">
+                      <div key={story.id || sIdx} className="mb-2 p-2 border border-line rounded bg-slate-50 space-y-1">
                         <input
                           type="text"
                           value={story.headline}
                           placeholder="Digest headline..."
-                          onChange={(e) => {
-                            const updated = [...design.sideStories]
-                            updated[sIdx].headline = e.target.value
-                            setDesign({ ...design, sideStories: updated })
-                          }}
-                          className="h-7 w-full rounded border border-line bg-white px-2 font-semibold outline-none text-xs"
+                          onChange={(e) => updateSideStory(sIdx, { headline: e.target.value })}
+                          className="h-7 w-full rounded border border-line bg-white px-2 font-semibold outline-none focus:border-gold text-xs"
                         />
                         <input
                           type="text"
                           value={story.paragraphs?.[0] || ''}
                           placeholder="Brief summary..."
-                          onChange={(e) => {
-                            const updated = [...design.sideStories]
-                            updated[sIdx].paragraphs = [e.target.value]
-                            setDesign({ ...design, sideStories: updated })
-                          }}
-                          className="h-7 w-full rounded border border-line bg-white px-2 text-[11px] outline-none"
+                          onChange={(e) => updateSideStory(sIdx, { paragraphs: [e.target.value] })}
+                          className="h-7 w-full rounded border border-line bg-white px-2 text-[11px] outline-none focus:border-gold"
                         />
+                        {sIdx === 1 && (
+                          <div className="space-y-1 pt-1">
+                            <span className="block text-[11px] font-semibold text-slate-600">
+                              Featured side photo
+                            </span>
+                            <ImageUploadField
+                              id={`side-photo-upload-${sIdx}`}
+                              value={story.image || ''}
+                              onChange={(url) => updateSideStory(sIdx, { image: url })}
+                            />
+                            <input
+                              type="url"
+                              value={story.image || ''}
+                              placeholder="Or paste image URL"
+                              onChange={(e) => updateSideStory(sIdx, { image: e.target.value })}
+                              className="h-7 w-full rounded border border-line bg-white px-2 text-[11px] outline-none focus:border-gold"
+                            />
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -612,41 +653,29 @@ export function EpaperDesignModal({
                       Bottom 3 Column Stories
                     </h4>
                     {design.bottomStories.map((bStory, bIdx) => (
-                      <div key={bIdx} className="mb-2 p-2 border border-line rounded bg-slate-50 space-y-1">
+                      <div key={bStory.id || bIdx} className="mb-2 p-2 border border-line rounded bg-slate-50 space-y-1">
                         <div className="flex gap-2">
                           <input
                             type="text"
                             value={bStory.kicker || ''}
                             placeholder="Tag / Kicker"
-                            onChange={(e) => {
-                              const updated = [...design.bottomStories]
-                              updated[bIdx].kicker = e.target.value
-                              setDesign({ ...design, bottomStories: updated })
-                            }}
-                            className="h-7 w-1/3 rounded border border-line bg-white px-2 text-[11px] font-bold text-red-700 outline-none"
+                            onChange={(e) => updateBottomStory(bIdx, { kicker: e.target.value })}
+                            className="h-7 w-1/3 rounded border border-line bg-white px-2 text-[11px] font-bold text-red-700 outline-none focus:border-gold"
                           />
                           <input
                             type="text"
                             value={bStory.headline}
                             placeholder="Story Headline"
-                            onChange={(e) => {
-                              const updated = [...design.bottomStories]
-                              updated[bIdx].headline = e.target.value
-                              setDesign({ ...design, bottomStories: updated })
-                            }}
-                            className="h-7 flex-1 rounded border border-line bg-white px-2 font-semibold outline-none text-xs"
+                            onChange={(e) => updateBottomStory(bIdx, { headline: e.target.value })}
+                            className="h-7 flex-1 rounded border border-line bg-white px-2 font-semibold outline-none focus:border-gold text-xs"
                           />
                         </div>
                         <input
                           type="text"
                           value={bStory.paragraphs?.[0] || ''}
                           placeholder="Summary paragraph..."
-                          onChange={(e) => {
-                            const updated = [...design.bottomStories]
-                            updated[bIdx].paragraphs = [e.target.value]
-                            setDesign({ ...design, bottomStories: updated })
-                          }}
-                          className="h-7 w-full rounded border border-line bg-white px-2 text-[11px] outline-none"
+                          onChange={(e) => updateBottomStory(bIdx, { paragraphs: [e.target.value] })}
+                          className="h-7 w-full rounded border border-line bg-white px-2 text-[11px] outline-none focus:border-gold"
                         />
                       </div>
                     ))}
@@ -665,31 +694,19 @@ export function EpaperDesignModal({
                       <input
                         type="text"
                         value={ticker.label}
-                        onChange={(e) => {
-                          const items = [...(design.topTicker?.items || [])]
-                          items[tIdx].label = e.target.value
-                          setDesign({ ...design, topTicker: { items } })
-                        }}
+                        onChange={(e) => updateTicker(tIdx, { label: e.target.value })}
                         className="h-7 w-28 rounded border border-line bg-white px-2 font-semibold text-xs"
                       />
                       <input
                         type="text"
                         value={ticker.value}
-                        onChange={(e) => {
-                          const items = [...(design.topTicker?.items || [])]
-                          items[tIdx].value = e.target.value
-                          setDesign({ ...design, topTicker: { items } })
-                        }}
+                        onChange={(e) => updateTicker(tIdx, { value: e.target.value })}
                         className="h-7 flex-1 rounded border border-line bg-white px-2 font-bold text-xs"
                       />
                       <input
                         type="text"
                         value={ticker.change || ''}
-                        onChange={(e) => {
-                          const items = [...(design.topTicker?.items || [])]
-                          items[tIdx].change = e.target.value
-                          setDesign({ ...design, topTicker: { items } })
-                        }}
+                        onChange={(e) => updateTicker(tIdx, { change: e.target.value })}
                         className="h-7 w-20 rounded border border-line bg-white px-2 text-xs"
                       />
                     </div>
