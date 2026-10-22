@@ -62,6 +62,14 @@ export async function fetchArticlesApi(): Promise<Article[]> {
   return records.map(toArticle)
 }
 
+export async function deleteArticleApi(id: string): Promise<void> {
+  try {
+    await api.delete(`/pages/${id}`)
+  } catch {
+    await api.delete(`/articles/${id}`)
+  }
+}
+
 export async function fetchArticleByIdApi(id: string): Promise<Article> {
   try {
     const { data } = await api.get<ArticleRecord | { article?: ArticleRecord }>(

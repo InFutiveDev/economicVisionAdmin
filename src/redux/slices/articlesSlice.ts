@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
-import { fetchArticlesApi } from '../../api/articles.api'
+import { deleteArticleApi, fetchArticlesApi } from '../../api/articles.api'
 import type { Article } from '../../types/article'
 import { getErrorMessage } from '../../utils/error'
 
@@ -26,6 +26,18 @@ export const fetchArticles = createAsyncThunk(
   },
 )
 
+export const deleteArticle = createAsyncThunk(
+  'articles/delete',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      await deleteArticleApi(id)
+      return id
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error, 'Could not delete article.'))
+    }
+  },
+)
+
 const articlesSlice = createSlice({
   name: 'articles',
   initialState,
@@ -43,6 +55,13 @@ const articlesSlice = createSlice({
       .addCase(fetchArticles.rejected, (state, action) => {
         state.status = 'failed'
         state.error = (action.payload as string) || 'Could not load articles.'
+      })
+      .addCase(deleteArticle.fulfilled, (state, action) => {
+        state.items = state.items.filter((article) => article.id !== action.payload)
+        state.error = null
+      })
+      .addCase(deleteArticle.rejected, (state, action) => {
+        state.error = (action.payload as string) || 'Could not delete article.'
       })
   },
 })
