@@ -117,7 +117,10 @@ export type PagePayload = {
   title: string
   slug: string
   kicker: string
+  subtitle: string
   excerpt: string
+  metaTitle: string
+  metaDescription: string
   category: string
   subCategory: string
   tags: string[]

@@ -7,6 +7,8 @@ import { BlockEditor } from '../components/blocks/BlockEditor'
 import { BlockPalette } from '../components/blocks/BlockPalette'
 import { BlockRenderer } from '../components/blocks/BlockRenderer'
 import { ImageUploadField } from '../components/blocks/ImageUploadField'
+import { RichTextEditor } from '../components/articles/RichTextEditor'
+import { SafeHtml } from '../components/articles/SafeHtml'
 import { TagInput } from '../components/articles/TagInput'
 import { useAppDispatch, useAppSelector } from '../redux/hooks'
 import { fetchArticles, selectArticles } from '../redux/slices/articlesSlice'
@@ -28,13 +30,17 @@ import {
   setExcerpt,
   setFeatured,
   setKicker,
+  setMetaDescription,
+  setMetaTitle,
   setSubCategory,
+  setSubtitle,
   setTags,
   setTitle,
   togglePreview,
   updateBlock,
 } from '../redux/slices/editorSlice'
 import { ARTICLE_CATEGORIES } from '../types/block'
+import { isHtmlEmpty, stripHtml } from '../utils/html'
 import { initials, slugify } from '../utils/slug'
 import '../styles/article-editor.css'
 
@@ -119,13 +125,13 @@ export function AddArticlePage({ previewOnly = false }: { previewOnly?: boolean 
   }, [articleId, dispatch, previewOnly, user?.name])
 
   const validate = () => {
-    if (!editor.title.trim() && editor.blocks.length === 0) {
+    if (isHtmlEmpty(editor.title) && editor.blocks.length === 0) {
       return {
         message: 'Title is required, and the article needs at least one block.',
         field: 'title' as const,
       }
     }
-    if (!editor.title.trim()) {
+    if (isHtmlEmpty(editor.title)) {
       return { message: 'Title is required.', field: 'title' as const }
     }
     if (editor.blocks.length === 0) {
@@ -234,17 +240,32 @@ export function AddArticlePage({ previewOnly = false }: { previewOnly?: boolean 
             <label className="field-label" htmlFor={TITLE_FIELD_ID}>
               Title
             </label>
-            <input
+            <RichTextEditor
               id={TITLE_FIELD_ID}
-              className={`article-title-input ${
+              className={`article-title-editor ${
                 /title/i.test(editor.error) ? 'is-invalid' : ''
               }`}
               value={editor.title}
               placeholder="Add a title"
+              singleLine
+              minHeight={52}
               aria-invalid={/title/i.test(editor.error)}
-              onChange={(event) => dispatch(setTitle(event.target.value))}
+              onChange={(html) => dispatch(setTitle(html))}
             />
             <p className="article-slug">{slug || 'slug-will-appear-here'}</p>
+          </div>
+          <div className="article-field">
+            <label className="field-label" htmlFor="article-subtitle">
+              Subtitle
+            </label>
+            <RichTextEditor
+              id="article-subtitle"
+              className="article-subtitle-editor"
+              value={editor.subtitle}
+              placeholder="Optional subtitle under the title"
+              minHeight={64}
+              onChange={(html) => dispatch(setSubtitle(html))}
+            />
           </div>
           <div className="article-field">
             <label className="field-label" htmlFor="article-excerpt">
@@ -257,6 +278,41 @@ export function AddArticlePage({ previewOnly = false }: { previewOnly?: boolean 
               placeholder="Dek / excerpt for the homepage and newsletter"
               onChange={(event) => dispatch(setExcerpt(event.target.value))}
             />
+          </div>
+          <div className="article-seo-panel">
+            <p className="article-seo-heading">SEO</p>
+            <div className="article-field">
+              <label className="field-label" htmlFor="article-meta-title">
+                Meta title
+              </label>
+              <input
+                id="article-meta-title"
+                className="field"
+                value={editor.metaTitle}
+                placeholder={stripHtml(editor.title) || 'Search / browser title'}
+                maxLength={70}
+                onChange={(event) => dispatch(setMetaTitle(event.target.value))}
+              />
+              <p className="article-field-hint">
+                {(editor.metaTitle || stripHtml(editor.title)).length}/70 — leave blank to use the article title
+              </p>
+            </div>
+            <div className="article-field">
+              <label className="field-label" htmlFor="article-meta-description">
+                Meta description
+              </label>
+              <textarea
+                id="article-meta-description"
+                className="article-excerpt"
+                value={editor.metaDescription}
+                placeholder={editor.excerpt || 'Short description for search results'}
+                maxLength={160}
+                onChange={(event) => dispatch(setMetaDescription(event.target.value))}
+              />
+              <p className="article-field-hint">
+                {(editor.metaDescription || editor.excerpt).length}/160 — leave blank to use the excerpt
+              </p>
+            </div>
           </div>
 
           <div className="article-meta-grid">
@@ -381,7 +437,14 @@ export function AddArticlePage({ previewOnly = false }: { previewOnly?: boolean 
             {editor.kicker ? (
               <p className="article-preview-kicker">{editor.kicker}</p>
             ) : null}
-            <h1 className="article-preview-title">{editor.title || 'Untitled'}</h1>
+            {isHtmlEmpty(editor.title) ? (
+              <h1 className="article-preview-title">Untitled</h1>
+            ) : (
+              <SafeHtml as="h1" className="article-preview-title rich-content" html={editor.title} />
+            )}
+            {!isHtmlEmpty(editor.subtitle) ? (
+              <SafeHtml as="p" className="article-preview-subtitle rich-content" html={editor.subtitle} />
+            ) : null}
             {editor.excerpt ? (
               <p className="article-preview-excerpt">{editor.excerpt}</p>
             ) : null}

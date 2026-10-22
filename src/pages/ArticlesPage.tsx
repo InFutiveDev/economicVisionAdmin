@@ -12,6 +12,7 @@ import {
 } from '../redux/slices/articlesSlice'
 import type { Article, ArticleStatus } from '../types/article'
 import { articleStatusStyles } from '../utils/articleStatus'
+import { stripHtml } from '../utils/html'
 
 type SortKey = 'title' | 'category' | 'author' | 'status' | 'published'
 type SortDir = 'asc' | 'desc'
@@ -35,6 +36,8 @@ function compareArticles(a: Article, b: Article, key: SortKey) {
       return publishedTime(a) - publishedTime(b)
     case 'category':
       return `${a.category} ${a.subCategory}`.localeCompare(`${b.category} ${b.subCategory}`)
+    case 'title':
+      return stripHtml(a.title).localeCompare(stripHtml(b.title))
     default:
       return a[key].localeCompare(b[key])
   }
@@ -95,14 +98,16 @@ export function ArticlesPage() {
       if (authorFilter && article.author !== authorFilter) return false
       if (!needle) return true
       return [
-        article.title,
+        stripHtml(article.title),
+        article.subtitle,
         article.excerpt,
         article.kicker,
+        article.metaTitle,
         article.author,
         article.category,
         article.subCategory,
         ...article.tags,
-      ].some((value) => value?.toLowerCase().includes(needle))
+      ].some((value) => stripHtml(value || '').toLowerCase().includes(needle))
     })
     const direction = sortDir === 'asc' ? 1 : -1
     return [...filtered].sort((a, b) => compareArticles(a, b, sortKey) * direction)
@@ -289,7 +294,7 @@ export function ArticlesPage() {
             {visible.map((article, index) => (
               <tr key={article.id} className="border-t border-line">
                 <td className="px-5 py-4 text-muted">{index + 1}</td>
-                <td className="px-5 py-4 font-medium">{article.title}</td>
+                <td className="px-5 py-4 font-medium">{stripHtml(article.title)}</td>
                 <td className="px-5 py-4 text-muted">
                   {article.category}
                   {article.subCategory ? (

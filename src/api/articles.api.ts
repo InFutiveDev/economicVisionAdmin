@@ -32,7 +32,10 @@ export function toArticle(item: ArticleRecord): Article {
   return {
     id: String(item.id ?? item._id ?? ''),
     title: item.title ?? '',
+    subtitle: item.subtitle ?? '',
     excerpt: item.excerpt ?? item.paragraph ?? '',
+    metaTitle: item.metaTitle ?? '',
+    metaDescription: item.metaDescription ?? '',
     category: item.category ?? item.articleCategory ?? 'Economy',
     subCategory: item.subCategory ?? '',
     author: item.author ?? item.authorName ?? 'Editorial Desk',

@@ -5,7 +5,10 @@ export type ArticleStatus = 'published' | 'draft' | 'review'
 export type Article = {
   id: string
   title: string
+  subtitle: string
   excerpt: string
+  metaTitle: string
+  metaDescription: string
   category: string
   subCategory: string
   author: string

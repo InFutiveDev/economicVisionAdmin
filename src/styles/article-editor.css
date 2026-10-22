@@ -291,6 +291,137 @@
   outline: none;
 }
 
+.article-seo-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.article-seo-heading {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.article-field-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.rich-editor {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.rich-editor.is-single .rich-editor-surface {
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.2;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.article-title-editor {
+  border: none;
+  background: transparent;
+  border-radius: 0;
+}
+
+.article-title-editor .rich-editor-toolbar {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.article-title-editor.is-invalid,
+.rich-editor[data-invalid='true'] {
+  outline: 2px solid var(--danger);
+  outline-offset: 2px;
+}
+
+.rich-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  background: #f8fafc;
+}
+
+.rich-editor-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.rich-editor-btn:hover {
+  border-color: var(--border);
+  background: #fff;
+  color: var(--text);
+}
+
+.rich-editor-surface {
+  min-height: 120px;
+  padding: 10px 12px;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.65;
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.rich-editor-surface:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.rich-content p {
+  margin: 0 0 0.75em;
+}
+
+.rich-content p:last-child {
+  margin-bottom: 0;
+}
+
+.rich-content a {
+  color: var(--accent-text);
+  text-decoration: underline;
+}
+
+.rendered-paragraph.rich-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.article-preview-subtitle {
+  margin: -4px 0 16px;
+  font-size: 20px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

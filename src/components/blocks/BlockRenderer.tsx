@@ -1,4 +1,6 @@
 import type { Block } from '../../types/block'
+import { SafeHtml } from '../articles/SafeHtml'
+import { isHtmlEmpty } from '../../utils/html'
 
 type BlockRendererProps = {
   block: Block
@@ -10,18 +12,28 @@ export function BlockRenderer({ block }: BlockRendererProps) {
       const HeadingTag = `h${block.data.level}` as 'h2' | 'h3' | 'h4'
       return (
         <div className="rendered-block">
-          <HeadingTag className={`rendered-heading h${block.data.level}`}>
-            {block.data.text || 'Untitled heading'}
-          </HeadingTag>
+          {isHtmlEmpty(block.data.text) ? (
+            <HeadingTag className={`rendered-heading h${block.data.level}`}>
+              Untitled heading
+            </HeadingTag>
+          ) : (
+            <SafeHtml
+              as={HeadingTag}
+              className={`rendered-heading h${block.data.level}`}
+              html={block.data.text}
+            />
+          )}
         </div>
       )
     }
     case 'paragraph':
       return (
         <div className="rendered-block">
-          <p className="rendered-paragraph">
-            {block.data.text || 'Empty paragraph'}
-          </p>
+          {isHtmlEmpty(block.data.text) ? (
+            <p className="rendered-paragraph">Empty paragraph</p>
+          ) : (
+            <SafeHtml as="div" className="rendered-paragraph rich-content" html={block.data.text} />
+          )}
         </div>
       )
     case 'image':

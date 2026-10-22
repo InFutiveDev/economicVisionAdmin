@@ -6,12 +6,16 @@ import type { Article } from '../../types/article'
 import type { Block, BlockType, PagePayload } from '../../types/block'
 import { createBlock } from '../../utils/blockFactory'
 import { getErrorMessage } from '../../utils/error'
+import { normalizeEditorHtml } from '../../utils/html'
 import { slugify } from '../../utils/slug'
 
 type EditorState = {
   title: string
   kicker: string
+  subtitle: string
   excerpt: string
+  metaTitle: string
+  metaDescription: string
   category: string
   subCategory: string
   tags: string
@@ -30,7 +34,10 @@ type EditorState = {
 const initialState: EditorState = {
   title: '',
   kicker: '',
+  subtitle: '',
   excerpt: '',
+  metaTitle: '',
+  metaDescription: '',
   category: 'Economy',
   subCategory: '',
   tags: '',
@@ -50,10 +57,13 @@ function toPayload(
   status: PagePayload['status'] = 'draft',
 ): PagePayload {
   return {
-    title: state.title.trim(),
+    title: normalizeEditorHtml(state.title),
     slug: slugify(state.title),
     kicker: state.kicker.trim(),
+    subtitle: normalizeEditorHtml(state.subtitle),
     excerpt: state.excerpt.trim(),
+    metaTitle: state.metaTitle.trim(),
+    metaDescription: state.metaDescription.trim(),
     category: state.category,
     subCategory: state.subCategory,
     tags: state.tags
@@ -64,7 +74,21 @@ function toPayload(
     featured: state.featured,
     author: state.author.trim() || 'Editorial Desk',
     status,
-    blocks: state.blocks,
+    blocks: state.blocks.map((block) => {
+      if (block.type === 'paragraph') {
+        return {
+          ...block,
+          data: { ...block.data, text: normalizeEditorHtml(block.data.text) },
+        }
+      }
+      if (block.type === 'heading') {
+        return {
+          ...block,
+          data: { ...block.data, text: normalizeEditorHtml(block.data.text) },
+        }
+      }
+      return block
+    }),
   }
 }
 
@@ -127,7 +151,10 @@ const editorSlice = createSlice({
       state.pageId = article.id
       state.title = article.title
       state.kicker = article.kicker
+      state.subtitle = article.subtitle || ''
       state.excerpt = article.excerpt
+      state.metaTitle = article.metaTitle || ''
+      state.metaDescription = article.metaDescription || ''
       state.category = article.category || 'Economy'
       state.subCategory = article.subCategory || ''
       state.tags = article.tags.join(', ')
@@ -149,8 +176,17 @@ const editorSlice = createSlice({
     setKicker(state, action: PayloadAction<string>) {
       state.kicker = action.payload
     },
+    setSubtitle(state, action: PayloadAction<string>) {
+      state.subtitle = action.payload
+    },
     setExcerpt(state, action: PayloadAction<string>) {
       state.excerpt = action.payload
+    },
+    setMetaTitle(state, action: PayloadAction<string>) {
+      state.metaTitle = action.payload
+    },
+    setMetaDescription(state, action: PayloadAction<string>) {
+      state.metaDescription = action.payload
     },
     setCategory(state, action: PayloadAction<string>) {
       if (state.category !== action.payload) state.subCategory = ''
@@ -269,7 +305,10 @@ export const {
   hydrateEditor,
   setTitle,
   setKicker,
+  setSubtitle,
   setExcerpt,
+  setMetaTitle,
+  setMetaDescription,
   setCategory,
   setSubCategory,
   setTags,

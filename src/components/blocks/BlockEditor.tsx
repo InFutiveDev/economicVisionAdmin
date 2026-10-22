@@ -13,6 +13,7 @@ import {
   type StatsBlock,
   type TableBlock,
 } from '../../types/block'
+import { RichTextEditor } from '../articles/RichTextEditor'
 import { BlockTypeIcon } from './BlockPalette'
 import { ImageUploadField } from './ImageUploadField'
 
@@ -176,14 +177,13 @@ function HeadingForm({
         <label className="field-label" htmlFor={`${block.id}-text`}>
           Text
         </label>
-        <input
+        <RichTextEditor
           id={`${block.id}-text`}
-          className="field"
           value={block.data.text}
           placeholder="Section heading"
-          onChange={(event) =>
-            onChange({ ...block.data, text: event.target.value })
-          }
+          singleLine
+          minHeight={44}
+          onChange={(text) => onChange({ ...block.data, text })}
         />
       </div>
       <div>
@@ -222,14 +222,12 @@ function ParagraphForm({
       <label className="field-label" htmlFor={`${block.id}-text`}>
         Body
       </label>
-      <textarea
+      <RichTextEditor
         id={`${block.id}-text`}
-        className="field"
         value={block.data.text}
-        placeholder="Write the paragraph"
-        onChange={(event) =>
-          onChange({ ...block.data, text: event.target.value })
-        }
+        placeholder="Write the paragraph. Use Enter for a new line."
+        minHeight={140}
+        onChange={(text) => onChange({ ...block.data, text })}
       />
     </div>
   )
